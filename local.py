@@ -129,7 +129,7 @@ def local_site_pca(args, k2=DEFAULT_k2, **kwargs):
     return json.dumps(computation_output)
 
 
-def local_return_data(args, ping_from_remote=None, **kwargs):
+def local_return_data(args, flags=[], **kwargs):
     """
         # Description:
             local_pca
