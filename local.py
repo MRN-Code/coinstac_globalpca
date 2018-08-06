@@ -8,7 +8,7 @@ from ancillary import list_recursive
 
 DEFAULT_k1 = 120
 DEFAULT_k2 = 500
-DEFAULT_data_file = 'subject_*.txt'
+DEFAULT_data_file = 'data.txt'
 
 
 def local_noop(**kwargs):
@@ -51,19 +51,15 @@ def local_preprocess(args, data_file=DEFAULT_data_file, **kwargs):
             remote_init_env
     """
 
-    files = glob.glob(data_file)
-    all_data = [None]*len(files)
-    for i, file in enumerate(files):
-        data = np.loadtxt(os.path.join(args["state"]["baseDirectory"], file))
-        data = data - np.matlib.repmat(np.mean(data, 0), 1, data.size[1])
-        all_data[i] = data
+    data = np.loadtxt(os.path.join(args["state"]["baseDirectory"], data_file))
+    data = data - np.matlib.repmat(np.mean(data, 0), 1, data.size[1])
 
     computation_output = dict(
         output=dict(
             computation_phase="local_preprocess"
         ),
         cache=dict(
-            all_data=all_data,
+            all_data=data,
         ),
     )
 
@@ -73,10 +69,10 @@ def local_preprocess(args, data_file=DEFAULT_data_file, **kwargs):
 def local_subject_pca(args, k1=DEFAULT_k1, **kwargs):
     """
         # Description:
-            local_pca
+            local_pca - perform subject-level PCA
 
         # PREVIOUS PHASE:
-            NA
+            local_preprocess
 
         # INPUT:
 
@@ -86,9 +82,10 @@ def local_subject_pca(args, k1=DEFAULT_k1, **kwargs):
             remote_init_env
     """
     all_data = args['cache']['all_data']
-    for i, data in enumerate(all_data):
-        w, v = scipy.sparse.linalg.eigs(data.T.dot(data), k=k1)
-        all_data[i] = data.dot(v)
+    for row in range(all_data.shape[0]):
+        data = all_data[row, :]
+        w, v = scipy.sparse.linalg.eigs(data.dot(data.T), k=k1)
+        all_data[row, :] = data.dot(v)
     computation_output = dict(
         output=dict(
             computation_phase="local_noop"
@@ -118,7 +115,6 @@ def local_site_pca(args, k2=DEFAULT_k2, **kwargs):
     """
     all_data = args['cache']['all_data']
     # Concatenate in the time dimension
-    all_data = np.concatenate(**all_data, axis=1)
     w, v = scipy.sparse.linalg.eigs(data.T.dot(data), k=k2)
     data = all_data.dot(v)
     computation_output = dict(
